@@ -8,11 +8,11 @@ import (
 
 // ReadIndexManager 管理ReadIndex请求
 type ReadIndexManager struct {
-	mu           sync.RWMutex
-	pendingReads map[string]*ReadIndexStatus
-	readStates   []ReadState
-	option       ReadOnlyOption
-	leaseTimeout time.Duration
+	mu            sync.RWMutex
+	pendingReads  map[string]*ReadIndexStatus
+	readStates    []ReadState
+	option        ReadOnlyOption
+	leaseTimeout  time.Duration
 	lastLeaseTime time.Time
 }
 

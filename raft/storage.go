@@ -3,7 +3,7 @@ package raft
 import (
 	"errors"
 	"time"
-	
+
 	"github.com/chenjianyu/go-raft/raft/logging"
 )
 
@@ -43,7 +43,7 @@ type MemoryStorage struct {
 	hardState HardState
 	snapshot  *Snapshot
 	entries   []LogEntry
-	
+
 	// 事件发射器
 	eventEmitter logging.EventEmitter
 }
@@ -91,11 +91,11 @@ func (ms *MemoryStorage) Entries(lo, hi uint64) ([]LogEntry, error) {
 		}
 		return nil, ErrUnavailable
 	}
-	
+
 	if lo == hi {
 		return nil, nil
 	}
-	
+
 	if lo < ms.firstIndex() {
 		return nil, ErrCompacted
 	}
@@ -109,11 +109,11 @@ func (ms *MemoryStorage) Entries(lo, hi uint64) ([]LogEntry, error) {
 	}
 
 	offset := ms.entries[0].Index
-	
+
 	if lo-offset >= uint64(len(ms.entries)) {
 		return nil, ErrUnavailable
 	}
-	
+
 	endIdx := hi - offset
 	if endIdx > uint64(len(ms.entries)) {
 		endIdx = uint64(len(ms.entries))
@@ -253,12 +253,12 @@ func (ms *MemoryStorage) CreateSnapshot(index uint64, data []byte) (*Snapshot, e
 	}
 
 	offset := ms.entries[0].Index
-	
+
 	// 确保索引存在并获取对应的任期
 	if index-offset >= uint64(len(ms.entries)) {
 		return nil, ErrUnavailable
 	}
-	
+
 	snapshot := &Snapshot{
 		Index: index,
 		Term:  ms.entries[index-offset].Term,

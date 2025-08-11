@@ -110,13 +110,13 @@ func (f *LoggerFactory) createConsoleLogger(config LoggerConfig) (Logger, error)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	logger := NewConsoleLoggerWithWriter(config.Level, writer)
-	
+
 	if len(config.Fields) > 0 {
 		logger = logger.WithFields(config.Fields).(*ConsoleLogger)
 	}
-	
+
 	return logger, nil
 }
 
@@ -125,25 +125,25 @@ func (f *LoggerFactory) createSlogLogger(config LoggerConfig) (Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	opts := &slog.HandlerOptions{
 		Level:     f.toSlogLevel(config.Level),
 		AddSource: config.Format.AddSource,
 	}
-	
+
 	var handler slog.Handler
 	if config.Format.JSON {
 		handler = slog.NewJSONHandler(writer, opts)
 	} else {
 		handler = slog.NewTextHandler(writer, opts)
 	}
-	
+
 	logger := NewSlogLoggerWithHandler(config.Level, handler)
-	
+
 	if len(config.Fields) > 0 {
 		logger = logger.WithFields(config.Fields).(*SlogLogger)
 	}
-	
+
 	return logger, nil
 }
 
@@ -153,7 +153,7 @@ func (f *LoggerFactory) createNopLogger(config LoggerConfig) (Logger, error) {
 
 func (f *LoggerFactory) createMultiLogger(config LoggerConfig) (Logger, error) {
 	var loggers []Logger
-	
+
 	for _, childConfig := range config.Children {
 		childLogger, err := f.CreateLogger(childConfig)
 		if err != nil {
@@ -161,14 +161,14 @@ func (f *LoggerFactory) createMultiLogger(config LoggerConfig) (Logger, error) {
 		}
 		loggers = append(loggers, childLogger)
 	}
-	
+
 	multiLogger := NewMultiLogger(loggers...)
 	multiLogger.SetLevel(config.Level)
-	
+
 	if len(config.Fields) > 0 {
 		multiLogger = multiLogger.WithFields(config.Fields).(*MultiLogger)
 	}
-	
+
 	return multiLogger, nil
 }
 

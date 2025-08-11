@@ -13,10 +13,10 @@ import (
 type KVStateMachine struct {
 	mu   sync.RWMutex
 	data map[string]string
-	
+
 	// 统计信息
 	stats *KVStats
-	
+
 	// 元数据
 	metadata *KVMetadata
 }
@@ -36,54 +36,54 @@ type Command struct {
 	Key       string    `json:"key"`
 	Value     string    `json:"value,omitempty"`
 	Timestamp int64     `json:"timestamp,omitempty"`
-	TTL       int64     `json:"ttl,omitempty"` // 生存时间（秒）
+	TTL       int64     `json:"ttl,omitempty"`       // 生存时间（秒）
 	BatchOps  []Command `json:"batch_ops,omitempty"` // 批量操作
 }
 
 // CommandType 命令类型
 const (
-	CommandSet        = "set"
-	CommandGet        = "get"
-	CommandDel        = "delete"
-	CommandIncr       = "incr"      // 递增
-	CommandExists     = "exists"    // 检查键是否存在
-	CommandKeys       = "keys"      // 获取匹配模式的键
-	CommandScan       = "scan"      // 扫描键值对
-	CommandBatch      = "batch"     // 批量操作
-	CommandExpire     = "expire"    // 设置过期时间
-	CommandTTL        = "ttl"       // 获取剩余生存时间
-	CommandFlushAll   = "flushall"  // 清空所有数据
-	CommandStats      = "stats"     // 获取统计信息
-	CommandSize       = "size"      // 获取数据大小
+	CommandSet      = "set"
+	CommandGet      = "get"
+	CommandDel      = "delete"
+	CommandIncr     = "incr"     // 递增
+	CommandExists   = "exists"   // 检查键是否存在
+	CommandKeys     = "keys"     // 获取匹配模式的键
+	CommandScan     = "scan"     // 扫描键值对
+	CommandBatch    = "batch"    // 批量操作
+	CommandExpire   = "expire"   // 设置过期时间
+	CommandTTL      = "ttl"      // 获取剩余生存时间
+	CommandFlushAll = "flushall" // 清空所有数据
+	CommandStats    = "stats"    // 获取统计信息
+	CommandSize     = "size"     // 获取数据大小
 )
 
 // KVStats 统计信息
 type KVStats struct {
 	mu                sync.RWMutex
-	TotalOperations   int64             `json:"total_operations"`
-	GetOperations     int64             `json:"get_operations"`
-	SetOperations     int64             `json:"set_operations"`
-	DeleteOperations  int64             `json:"delete_operations"`
-	FailedOperations  int64             `json:"failed_operations"`
-	LastOperationTime time.Time         `json:"last_operation_time"`
-	OperationLatency  map[string]int64  `json:"operation_latency_ms"`
-	KeySpaceHits      int64             `json:"keyspace_hits"`
-	KeySpaceMisses    int64             `json:"keyspace_misses"`
+	TotalOperations   int64            `json:"total_operations"`
+	GetOperations     int64            `json:"get_operations"`
+	SetOperations     int64            `json:"set_operations"`
+	DeleteOperations  int64            `json:"delete_operations"`
+	FailedOperations  int64            `json:"failed_operations"`
+	LastOperationTime time.Time        `json:"last_operation_time"`
+	OperationLatency  map[string]int64 `json:"operation_latency_ms"`
+	KeySpaceHits      int64            `json:"keyspace_hits"`
+	KeySpaceMisses    int64            `json:"keyspace_misses"`
 }
 
 // KVMetadata 元数据
 type KVMetadata struct {
-	mu          sync.RWMutex
-	CreatedTime time.Time         `json:"created_time"`
+	mu           sync.RWMutex
+	CreatedTime  time.Time        `json:"created_time"`
 	LastSnapshot time.Time        `json:"last_snapshot"`
-	Version     string            `json:"version"`
-	Expiry      map[string]int64  `json:"expiry"` // 键的过期时间戳
+	Version      string           `json:"version"`
+	Expiry       map[string]int64 `json:"expiry"` // 键的过期时间戳
 }
 
 // Apply 实现 StateMachine 接口
 func (kv *KVStateMachine) Apply(data []byte) ([]byte, error) {
 	start := time.Now()
-	
+
 	var cmd Command
 	if err := json.Unmarshal(data, &cmd); err != nil {
 		kv.updateStats("apply", false, time.Since(start))
@@ -131,7 +131,7 @@ func (kv *KVStateMachine) Apply(data []byte) ([]byte, error) {
 
 	// 更新统计信息
 	kv.updateStats(cmd.Type, err == nil, time.Since(start))
-	
+
 	return result, err
 }
 
@@ -141,7 +141,7 @@ func (kv *KVStateMachine) handleSet(cmd Command) ([]byte, error) {
 	defer kv.mu.Unlock()
 
 	kv.data[cmd.Key] = cmd.Value
-	
+
 	// 处理 TTL
 	if cmd.TTL > 0 {
 		expiryTime := time.Now().Unix() + cmd.TTL
@@ -149,7 +149,7 @@ func (kv *KVStateMachine) handleSet(cmd Command) ([]byte, error) {
 		kv.metadata.Expiry[cmd.Key] = expiryTime
 		kv.metadata.mu.Unlock()
 	}
-	
+
 	return []byte("OK"), nil
 }
 
@@ -168,7 +168,7 @@ func (kv *KVStateMachine) handleGet(cmd Command) ([]byte, error) {
 		kv.metadata.mu.Unlock()
 		kv.mu.Unlock()
 		kv.mu.RLock()
-		
+
 		kv.stats.mu.Lock()
 		kv.stats.KeySpaceMisses++
 		kv.stats.mu.Unlock()
@@ -182,11 +182,11 @@ func (kv *KVStateMachine) handleGet(cmd Command) ([]byte, error) {
 		kv.stats.mu.Unlock()
 		return nil, fmt.Errorf("key not found: %s", cmd.Key)
 	}
-	
+
 	kv.stats.mu.Lock()
 	kv.stats.KeySpaceHits++
 	kv.stats.mu.Unlock()
-	
+
 	return []byte(value), nil
 }
 
@@ -203,7 +203,7 @@ func (kv *KVStateMachine) handleDelete(cmd Command) ([]byte, error) {
 	kv.metadata.mu.Lock()
 	delete(kv.metadata.Expiry, cmd.Key)
 	kv.metadata.mu.Unlock()
-	
+
 	return []byte("1"), nil // 成功删除
 }
 
@@ -214,7 +214,7 @@ func (kv *KVStateMachine) handleIncrement(cmd Command) ([]byte, error) {
 
 	value, exists := kv.data[cmd.Key]
 	var intVal int64 = 0
-	
+
 	if exists {
 		if parsed, err := parseIntValue(value); err != nil {
 			return nil, fmt.Errorf("value is not an integer: %s", value)
@@ -222,7 +222,7 @@ func (kv *KVStateMachine) handleIncrement(cmd Command) ([]byte, error) {
 			intVal = parsed
 		}
 	}
-	
+
 	increment := int64(1)
 	if cmd.Value != "" {
 		if parsed, err := parseIntValue(cmd.Value); err != nil {
@@ -231,10 +231,10 @@ func (kv *KVStateMachine) handleIncrement(cmd Command) ([]byte, error) {
 			increment = parsed
 		}
 	}
-	
+
 	intVal += increment
 	kv.data[cmd.Key] = fmt.Sprintf("%d", intVal)
-	
+
 	return []byte(fmt.Sprintf("%d", intVal)), nil
 }
 
@@ -250,7 +250,7 @@ func (kv *KVStateMachine) handleExists(cmd Command) ([]byte, error) {
 	if _, exists := kv.data[cmd.Key]; exists {
 		return []byte("1"), nil
 	}
-	
+
 	return []byte("0"), nil
 }
 
@@ -273,7 +273,7 @@ func (kv *KVStateMachine) handleKeys(cmd Command) ([]byte, error) {
 			keys = append(keys, key)
 		}
 	}
-	
+
 	sort.Strings(keys) // 保证顺序一致性
 	return json.Marshal(keys)
 }
@@ -297,7 +297,7 @@ func (kv *KVStateMachine) handleScan(cmd Command) ([]byte, error) {
 			result[key] = value
 		}
 	}
-	
+
 	return json.Marshal(result)
 }
 
@@ -305,11 +305,11 @@ func (kv *KVStateMachine) handleScan(cmd Command) ([]byte, error) {
 func (kv *KVStateMachine) handleBatch(cmd Command) ([]byte, error) {
 	var results []string
 	var errors []string
-	
+
 	for _, op := range cmd.BatchOps {
 		var result []byte
 		var err error
-		
+
 		switch op.Type {
 		case CommandSet:
 			result, err = kv.handleSet(op)
@@ -322,20 +322,20 @@ func (kv *KVStateMachine) handleBatch(cmd Command) ([]byte, error) {
 		default:
 			err = fmt.Errorf("unsupported batch operation: %s", op.Type)
 		}
-		
+
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("%s:%s", op.Key, err.Error()))
 		} else {
 			results = append(results, string(result))
 		}
 	}
-	
+
 	response := map[string]interface{}{
 		"results": results,
 		"errors":  errors,
 		"success": len(errors) == 0,
 	}
-	
+
 	return json.Marshal(response)
 }
 
@@ -344,11 +344,11 @@ func (kv *KVStateMachine) handleExpire(cmd Command) ([]byte, error) {
 	kv.mu.RLock()
 	_, exists := kv.data[cmd.Key]
 	kv.mu.RUnlock()
-	
+
 	if !exists {
 		return []byte("0"), nil
 	}
-	
+
 	if ttl, err := parseIntValue(cmd.Value); err != nil {
 		return nil, fmt.Errorf("invalid TTL value: %s", cmd.Value)
 	} else {
@@ -365,16 +365,16 @@ func (kv *KVStateMachine) handleTTL(cmd Command) ([]byte, error) {
 	kv.metadata.mu.RLock()
 	expiryTime, hasExpiry := kv.metadata.Expiry[cmd.Key]
 	kv.metadata.mu.RUnlock()
-	
+
 	if !hasExpiry {
 		return []byte("-1"), nil // 没有设置过期时间
 	}
-	
+
 	currentTime := time.Now().Unix()
 	if expiryTime <= currentTime {
 		return []byte("-2"), nil // 已过期
 	}
-	
+
 	ttl := expiryTime - currentTime
 	return []byte(fmt.Sprintf("%d", ttl)), nil
 }
@@ -383,13 +383,13 @@ func (kv *KVStateMachine) handleTTL(cmd Command) ([]byte, error) {
 func (kv *KVStateMachine) handleFlushAll(cmd Command) ([]byte, error) {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	
+
 	kv.data = make(map[string]string)
-	
+
 	kv.metadata.mu.Lock()
 	kv.metadata.Expiry = make(map[string]int64)
 	kv.metadata.mu.Unlock()
-	
+
 	return []byte("OK"), nil
 }
 
@@ -397,21 +397,21 @@ func (kv *KVStateMachine) handleFlushAll(cmd Command) ([]byte, error) {
 func (kv *KVStateMachine) handleStats(cmd Command) ([]byte, error) {
 	kv.stats.mu.RLock()
 	defer kv.stats.mu.RUnlock()
-	
+
 	stats := map[string]interface{}{
-		"total_operations":   kv.stats.TotalOperations,
-		"get_operations":     kv.stats.GetOperations,
-		"set_operations":     kv.stats.SetOperations,
-		"delete_operations":  kv.stats.DeleteOperations,
-		"failed_operations":  kv.stats.FailedOperations,
-		"keyspace_hits":      kv.stats.KeySpaceHits,
-		"keyspace_misses":    kv.stats.KeySpaceMisses,
-		"hit_rate":           kv.calculateHitRate(),
-		"last_operation":     kv.stats.LastOperationTime.Format(time.RFC3339),
-		"uptime_seconds":     time.Since(kv.metadata.CreatedTime).Seconds(),
-		"keys_count":         len(kv.data),
+		"total_operations":  kv.stats.TotalOperations,
+		"get_operations":    kv.stats.GetOperations,
+		"set_operations":    kv.stats.SetOperations,
+		"delete_operations": kv.stats.DeleteOperations,
+		"failed_operations": kv.stats.FailedOperations,
+		"keyspace_hits":     kv.stats.KeySpaceHits,
+		"keyspace_misses":   kv.stats.KeySpaceMisses,
+		"hit_rate":          kv.calculateHitRate(),
+		"last_operation":    kv.stats.LastOperationTime.Format(time.RFC3339),
+		"uptime_seconds":    time.Since(kv.metadata.CreatedTime).Seconds(),
+		"keys_count":        len(kv.data),
 	}
-	
+
 	return json.Marshal(stats)
 }
 
@@ -419,19 +419,19 @@ func (kv *KVStateMachine) handleStats(cmd Command) ([]byte, error) {
 func (kv *KVStateMachine) handleSize(cmd Command) ([]byte, error) {
 	kv.mu.RLock()
 	defer kv.mu.RUnlock()
-	
+
 	var totalSize int64
 	for key, value := range kv.data {
 		totalSize += int64(len(key) + len(value))
 	}
-	
+
 	result := map[string]interface{}{
-		"keys_count":    len(kv.data),
-		"memory_usage":  totalSize,
-		"avg_key_size":  kv.calculateAvgKeySize(),
+		"keys_count":     len(kv.data),
+		"memory_usage":   totalSize,
+		"avg_key_size":   kv.calculateAvgKeySize(),
 		"avg_value_size": kv.calculateAvgValueSize(),
 	}
-	
+
 	return json.Marshal(result)
 }
 
@@ -439,11 +439,11 @@ func (kv *KVStateMachine) handleSize(cmd Command) ([]byte, error) {
 func (kv *KVStateMachine) Snapshot() ([]byte, error) {
 	kv.mu.RLock()
 	defer kv.mu.RUnlock()
-	
+
 	kv.metadata.mu.Lock()
 	kv.metadata.LastSnapshot = time.Now()
 	kv.metadata.mu.Unlock()
-	
+
 	// 清理过期键
 	validData := make(map[string]string)
 	for key, value := range kv.data {
@@ -453,10 +453,10 @@ func (kv *KVStateMachine) Snapshot() ([]byte, error) {
 	}
 
 	snapshot := map[string]interface{}{
-		"data":     validData,
-		"metadata": kv.metadata,
-		"stats":    kv.stats,
-		"version":  "1.0.0",
+		"data":      validData,
+		"metadata":  kv.metadata,
+		"stats":     kv.stats,
+		"version":   "1.0.0",
 		"timestamp": time.Now().Unix(),
 	}
 
@@ -518,20 +518,20 @@ func (kv *KVStateMachine) Restore(data []byte) error {
 func (kv *KVStateMachine) updateStats(operation string, success bool, latency time.Duration) {
 	kv.stats.mu.Lock()
 	defer kv.stats.mu.Unlock()
-	
+
 	kv.stats.TotalOperations++
 	kv.stats.LastOperationTime = time.Now()
-	
+
 	if kv.stats.OperationLatency == nil {
 		kv.stats.OperationLatency = make(map[string]int64)
 	}
 	kv.stats.OperationLatency[operation] = latency.Milliseconds()
-	
+
 	if !success {
 		kv.stats.FailedOperations++
 		return
 	}
-	
+
 	switch operation {
 	case CommandGet:
 		kv.stats.GetOperations++
@@ -547,11 +547,11 @@ func (kv *KVStateMachine) isExpired(key string) bool {
 	kv.metadata.mu.RLock()
 	expiryTime, hasExpiry := kv.metadata.Expiry[key]
 	kv.metadata.mu.RUnlock()
-	
+
 	if !hasExpiry {
 		return false
 	}
-	
+
 	return time.Now().Unix() > expiryTime
 }
 
@@ -569,12 +569,12 @@ func (kv *KVStateMachine) calculateAvgKeySize() float64 {
 	if len(kv.data) == 0 {
 		return 0
 	}
-	
+
 	var totalSize int
 	for key := range kv.data {
 		totalSize += len(key)
 	}
-	
+
 	return float64(totalSize) / float64(len(kv.data))
 }
 
@@ -583,12 +583,12 @@ func (kv *KVStateMachine) calculateAvgValueSize() float64 {
 	if len(kv.data) == 0 {
 		return 0
 	}
-	
+
 	var totalSize int
 	for _, value := range kv.data {
 		totalSize += len(value)
 	}
-	
+
 	return float64(totalSize) / float64(len(kv.data))
 }
 
@@ -597,22 +597,22 @@ func matchPattern(str, pattern string) bool {
 	if pattern == "*" {
 		return true
 	}
-	
+
 	if !strings.Contains(pattern, "*") {
 		return str == pattern
 	}
-	
+
 	// 简单的前缀/后缀匹配
 	if strings.HasPrefix(pattern, "*") {
 		suffix := strings.TrimPrefix(pattern, "*")
 		return strings.HasSuffix(str, suffix)
 	}
-	
+
 	if strings.HasSuffix(pattern, "*") {
 		prefix := strings.TrimSuffix(pattern, "*")
 		return strings.HasPrefix(str, prefix)
 	}
-	
+
 	return false
 }
 

@@ -11,33 +11,33 @@ import (
 type PerformanceOptimizer struct {
 	mu   sync.RWMutex
 	node *Node
-	
+
 	// 批处理配置
 	batchConfig BatchConfig
-	
+
 	// 流水线配置
 	pipelineConfig PipelineConfig
-	
+
 	// 预投票配置
 	preVoteEnabled bool
-	
+
 	// 性能统计
 	stats *PerformanceStats
-	
+
 	// 批处理缓冲区
 	batchBuffer [][]byte
 	batchTimer  *time.Timer
-	
+
 	// 流水线状态
 	pipelineState *PipelineState
 }
 
 // BatchConfig 批处理配置
 type BatchConfig struct {
-	Enabled     bool          `json:"enabled"`
-	MaxSize     int           `json:"max_size"`
-	MaxDelay    time.Duration `json:"max_delay"`
-	MaxBytes    int           `json:"max_bytes"`
+	Enabled  bool          `json:"enabled"`
+	MaxSize  int           `json:"max_size"`
+	MaxDelay time.Duration `json:"max_delay"`
+	MaxBytes int           `json:"max_bytes"`
 }
 
 // PipelineConfig 流水线配置
@@ -59,33 +59,33 @@ type PipelineState struct {
 // PerformanceStats 性能统计
 type PerformanceStats struct {
 	mu sync.RWMutex
-	
+
 	// 吞吐量统计
-	TotalProposals    uint64 `json:"total_proposals"`
-	TotalCommits      uint64 `json:"total_commits"`
-	BatchedProposals  uint64 `json:"batched_proposals"`
-	
+	TotalProposals   uint64 `json:"total_proposals"`
+	TotalCommits     uint64 `json:"total_commits"`
+	BatchedProposals uint64 `json:"batched_proposals"`
+
 	// 延迟统计
-	AvgLatency        time.Duration `json:"avg_latency"`
-	P99Latency        time.Duration `json:"p99_latency"`
-	
+	AvgLatency time.Duration `json:"avg_latency"`
+	P99Latency time.Duration `json:"p99_latency"`
+
 	// 网络统计
-	MessagesSent      uint64 `json:"messages_sent"`
-	MessagesReceived  uint64 `json:"messages_received"`
-	BytesSent         uint64 `json:"bytes_sent"`
-	BytesReceived     uint64 `json:"bytes_received"`
-	
+	MessagesSent     uint64 `json:"messages_sent"`
+	MessagesReceived uint64 `json:"messages_received"`
+	BytesSent        uint64 `json:"bytes_sent"`
+	BytesReceived    uint64 `json:"bytes_received"`
+
 	// 选举统计
-	ElectionCount     uint64 `json:"election_count"`
-	AvgElectionTime   time.Duration `json:"avg_election_time"`
-	
+	ElectionCount   uint64        `json:"election_count"`
+	AvgElectionTime time.Duration `json:"avg_election_time"`
+
 	// 快照统计
-	SnapshotCount     uint64 `json:"snapshot_count"`
-	AvgSnapshotTime   time.Duration `json:"avg_snapshot_time"`
-	
+	SnapshotCount   uint64        `json:"snapshot_count"`
+	AvgSnapshotTime time.Duration `json:"avg_snapshot_time"`
+
 	// 时间戳
-	StartTime         time.Time `json:"start_time"`
-	LastUpdateTime    time.Time `json:"last_update_time"`
+	StartTime      time.Time `json:"start_time"`
+	LastUpdateTime time.Time `json:"last_update_time"`
 }
 
 // NewPerformanceOptimizer 创建性能优化器
@@ -120,7 +120,7 @@ func NewPerformanceOptimizer(node *Node) *PerformanceOptimizer {
 func (po *PerformanceOptimizer) EnableBatching(config BatchConfig) {
 	po.mu.Lock()
 	defer po.mu.Unlock()
-	
+
 	po.batchConfig = config
 	if config.Enabled && po.batchTimer == nil {
 		po.batchTimer = time.NewTimer(config.MaxDelay)
@@ -132,7 +132,7 @@ func (po *PerformanceOptimizer) EnableBatching(config BatchConfig) {
 func (po *PerformanceOptimizer) EnablePipelining(config PipelineConfig) {
 	po.mu.Lock()
 	defer po.mu.Unlock()
-	
+
 	po.pipelineConfig = config
 }
 
@@ -140,7 +140,7 @@ func (po *PerformanceOptimizer) EnablePipelining(config PipelineConfig) {
 func (po *PerformanceOptimizer) EnablePreVote(enabled bool) {
 	po.mu.Lock()
 	defer po.mu.Unlock()
-	
+
 	po.preVoteEnabled = enabled
 }
 
@@ -149,24 +149,24 @@ func (po *PerformanceOptimizer) BatchPropose(ctx context.Context, data []byte) e
 	if !po.batchConfig.Enabled {
 		return po.node.Propose(ctx, data)
 	}
-	
+
 	po.mu.Lock()
 	defer po.mu.Unlock()
-	
+
 	// 添加到批处理缓冲区
 	po.batchBuffer = append(po.batchBuffer, data)
-	
+
 	// 检查是否需要立即发送
 	if len(po.batchBuffer) >= po.batchConfig.MaxSize ||
 		po.calculateBatchSize() >= po.batchConfig.MaxBytes {
 		return po.flushBatch(ctx)
 	}
-	
+
 	// 重置定时器
 	if po.batchTimer != nil {
 		po.batchTimer.Reset(po.batchConfig.MaxDelay)
 	}
-	
+
 	return nil
 }
 
@@ -175,18 +175,18 @@ func (po *PerformanceOptimizer) flushBatch(ctx context.Context) error {
 	if len(po.batchBuffer) == 0 {
 		return nil
 	}
-	
+
 	// 创建批处理数据
 	batchData := po.encodeBatch(po.batchBuffer)
-	
+
 	// 更新统计
 	po.stats.mu.Lock()
 	po.stats.BatchedProposals += uint64(len(po.batchBuffer))
 	po.stats.mu.Unlock()
-	
+
 	// 清空缓冲区
 	po.batchBuffer = po.batchBuffer[:0]
-	
+
 	// 提议批处理数据
 	return po.node.Propose(ctx, batchData)
 }
@@ -221,25 +221,25 @@ func (po *PerformanceOptimizer) calculateBatchSize() int {
 func (po *PerformanceOptimizer) encodeBatch(batch [][]byte) []byte {
 	// 简单的编码方式：长度前缀 + 数据
 	result := make([]byte, 0)
-	
+
 	// 添加批处理标记
 	result = append(result, 0xFF, 0xFE) // 批处理魔数
-	
+
 	// 添加条目数量
 	count := uint32(len(batch))
-	result = append(result, 
-		byte(count>>24), byte(count>>16), 
+	result = append(result,
+		byte(count>>24), byte(count>>16),
 		byte(count>>8), byte(count))
-	
+
 	// 添加每个条目
 	for _, data := range batch {
 		length := uint32(len(data))
-		result = append(result, 
-			byte(length>>24), byte(length>>16), 
+		result = append(result,
+			byte(length>>24), byte(length>>16),
 			byte(length>>8), byte(length))
 		result = append(result, data...)
 	}
-	
+
 	return result
 }
 
@@ -248,40 +248,40 @@ func (po *PerformanceOptimizer) decodeBatch(data []byte) ([][]byte, bool) {
 	if len(data) < 6 {
 		return nil, false
 	}
-	
+
 	// 检查批处理标记
 	if data[0] != 0xFF || data[1] != 0xFE {
 		return nil, false
 	}
-	
+
 	// 读取条目数量
-	count := uint32(data[2])<<24 | uint32(data[3])<<16 | 
-			uint32(data[4])<<8 | uint32(data[5])
-	
+	count := uint32(data[2])<<24 | uint32(data[3])<<16 |
+		uint32(data[4])<<8 | uint32(data[5])
+
 	result := make([][]byte, 0, count)
 	offset := 6
-	
+
 	for i := uint32(0); i < count; i++ {
 		if offset+4 > len(data) {
 			return nil, false
 		}
-		
+
 		// 读取长度
 		length := uint32(data[offset])<<24 | uint32(data[offset+1])<<16 |
-				uint32(data[offset+2])<<8 | uint32(data[offset+3])
+			uint32(data[offset+2])<<8 | uint32(data[offset+3])
 		offset += 4
-		
+
 		if offset+int(length) > len(data) {
 			return nil, false
 		}
-		
+
 		// 读取数据
 		item := make([]byte, length)
 		copy(item, data[offset:offset+int(length)])
 		result = append(result, item)
 		offset += int(length)
 	}
-	
+
 	return result, true
 }
 
@@ -291,27 +291,27 @@ func (po *PerformanceOptimizer) PipelinedAppendEntries(nodeID uint64, entries []
 		// 使用传统方式
 		return po.sendAppendEntries(nodeID, entries)
 	}
-	
+
 	po.mu.Lock()
 	defer po.mu.Unlock()
-	
+
 	// 检查流水线窗口
 	if po.pipelineState.inflightCount >= po.pipelineConfig.MaxInflight {
 		return fmt.Errorf("pipeline window full")
 	}
-	
+
 	// 发送条目
 	if err := po.sendAppendEntries(nodeID, entries); err != nil {
 		return err
 	}
-	
+
 	// 更新流水线状态
 	po.pipelineState.inflightCount++
 	if len(entries) > 0 {
 		lastIndex := entries[len(entries)-1].Index
 		po.pipelineState.pendingAcks[lastIndex] = true
 	}
-	
+
 	return nil
 }
 
@@ -327,15 +327,15 @@ func (po *PerformanceOptimizer) HandleAppendEntriesResponse(nodeID uint64, succe
 	if !po.pipelineConfig.Enabled {
 		return
 	}
-	
+
 	po.mu.Lock()
 	defer po.mu.Unlock()
-	
+
 	if success {
 		// 移除已确认的条目
 		delete(po.pipelineState.pendingAcks, matchIndex)
 		po.pipelineState.inflightCount--
-		
+
 		// 更新窗口
 		if matchIndex > po.pipelineState.windowStart {
 			po.pipelineState.windowStart = matchIndex
@@ -351,7 +351,7 @@ func (po *PerformanceOptimizer) PreVote(ctx context.Context) bool {
 	if !po.preVoteEnabled {
 		return true // 跳过预投票
 	}
-	
+
 	// 实现预投票逻辑
 	// 这里简化实现
 	return true
@@ -361,9 +361,9 @@ func (po *PerformanceOptimizer) PreVote(ctx context.Context) bool {
 func (po *PerformanceOptimizer) UpdateStats(statType string, value interface{}) {
 	po.stats.mu.Lock()
 	defer po.stats.mu.Unlock()
-	
+
 	po.stats.LastUpdateTime = time.Now()
-	
+
 	switch statType {
 	case "proposal":
 		po.stats.TotalProposals++
@@ -406,10 +406,24 @@ func (po *PerformanceOptimizer) UpdateStats(statType string, value interface{}) 
 func (po *PerformanceOptimizer) GetStats() *PerformanceStats {
 	po.stats.mu.RLock()
 	defer po.stats.mu.RUnlock()
-	
-	// 返回副本
-	statsCopy := *po.stats
-	return &statsCopy
+
+	// 返回副本，避免拷贝锁
+	return &PerformanceStats{
+		StartTime:        po.stats.StartTime,
+		LastUpdateTime:   po.stats.LastUpdateTime,
+		TotalProposals:   po.stats.TotalProposals,
+		TotalCommits:     po.stats.TotalCommits,
+		BatchedProposals: po.stats.BatchedProposals,
+		MessagesSent:     po.stats.MessagesSent,
+		MessagesReceived: po.stats.MessagesReceived,
+		BytesSent:        po.stats.BytesSent,
+		BytesReceived:    po.stats.BytesReceived,
+		ElectionCount:    po.stats.ElectionCount,
+		SnapshotCount:    po.stats.SnapshotCount,
+		AvgLatency:       po.stats.AvgLatency,
+		AvgElectionTime:  po.stats.AvgElectionTime,
+		AvgSnapshotTime:  po.stats.AvgSnapshotTime,
+	}
 }
 
 // GetThroughput 获取吞吐量（每秒提议数）
@@ -443,14 +457,14 @@ func (po *PerformanceOptimizer) GetBatchEfficiency() float64 {
 // OptimizeConfiguration 自动优化配置
 func (po *PerformanceOptimizer) OptimizeConfiguration() {
 	stats := po.GetStats()
-	
+
 	// 根据统计信息调整配置
 	throughput := po.GetThroughput()
 	commitRate := po.GetCommitRate()
-	
+
 	po.mu.Lock()
 	defer po.mu.Unlock()
-	
+
 	// 调整批处理配置
 	if throughput > 1000 && commitRate > 0.9 {
 		// 高吞吐量，增加批处理大小
@@ -463,7 +477,7 @@ func (po *PerformanceOptimizer) OptimizeConfiguration() {
 			po.batchConfig.MaxSize -= 5
 		}
 	}
-	
+
 	// 调整流水线配置
 	if stats.AvgLatency > 100*time.Millisecond {
 		// 高延迟，减少流水线深度
@@ -482,7 +496,7 @@ func (po *PerformanceOptimizer) OptimizeConfiguration() {
 func (po *PerformanceOptimizer) ResetStats() {
 	po.stats.mu.Lock()
 	defer po.stats.mu.Unlock()
-	
+
 	po.stats = &PerformanceStats{
 		StartTime:      time.Now(),
 		LastUpdateTime: time.Now(),

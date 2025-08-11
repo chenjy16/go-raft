@@ -98,7 +98,7 @@ func (l *ConsoleLogger) WithFields(fields map[string]interface{}) Logger {
 	for k, v := range fields {
 		newFields[k] = v
 	}
-	
+
 	return &ConsoleLogger{
 		level:  l.level,
 		writer: l.writer,
@@ -114,7 +114,7 @@ func (l *ConsoleLogger) shouldLog(event Event) bool {
 	if l.level == LevelOff {
 		return false
 	}
-	
+
 	eventLevel := l.getEventLevel(event)
 	return eventLevel >= l.level
 }
@@ -126,8 +126,8 @@ func (l *ConsoleLogger) getEventLevel(event Event) Level {
 	case EventWarning:
 		return LevelWarn
 	case EventNodeStarting, EventNodeStarted, EventNodeStopping, EventNodeStopped,
-		 EventStateChanged, EventTermChanged, EventLeaderChanged,
-		 EventElectionStarted, EventElectionWon, EventElectionLost:
+		EventStateChanged, EventTermChanged, EventLeaderChanged,
+		EventElectionStarted, EventElectionWon, EventElectionLost:
 		return LevelInfo
 	default:
 		return LevelDebug
@@ -139,7 +139,7 @@ func (l *ConsoleLogger) writeEvent(event Event) {
 	level := l.getEventLevel(event).String()
 	eventType := string(event.GetEventType())
 	nodeID := event.GetNodeID()
-	
+
 	// 构建基础信息
 	parts := []string{
 		fmt.Sprintf("[%s]", timestamp),
@@ -147,19 +147,19 @@ func (l *ConsoleLogger) writeEvent(event Event) {
 		fmt.Sprintf("[Node-%d]", nodeID),
 		fmt.Sprintf("[%s]", eventType),
 	}
-	
+
 	// 添加事件特定信息
 	eventInfo := l.formatEventInfo(event)
 	if eventInfo != "" {
 		parts = append(parts, eventInfo)
 	}
-	
+
 	// 添加额外字段
 	if len(l.fields) > 0 {
 		fieldsStr := l.formatFields(l.fields)
 		parts = append(parts, fieldsStr)
 	}
-	
+
 	message := strings.Join(parts, " ")
 	fmt.Fprintln(l.writer, message)
 }
@@ -179,17 +179,17 @@ func (l *ConsoleLogger) formatEventInfo(event Event) string {
 		return fmt.Sprintf("old_leader=%d new_leader=%d", e.OldLeader, e.NewLeader)
 	case *LogAppendedEvent:
 		if e.Error != nil {
-			return fmt.Sprintf("entries=%d first_index=%d last_index=%d duration=%v error=%v", 
+			return fmt.Sprintf("entries=%d first_index=%d last_index=%d duration=%v error=%v",
 				e.EntryCount, e.FirstIndex, e.LastIndex, e.Duration, e.Error)
 		}
-		return fmt.Sprintf("entries=%d first_index=%d last_index=%d duration=%v", 
+		return fmt.Sprintf("entries=%d first_index=%d last_index=%d duration=%v",
 			e.EntryCount, e.FirstIndex, e.LastIndex, e.Duration)
 	case *MessageSentEvent:
 		if e.Error != nil {
-			return fmt.Sprintf("type=%s to=%d term=%d duration=%v success=%t error=%v", 
+			return fmt.Sprintf("type=%s to=%d term=%d duration=%v success=%t error=%v",
 				e.MessageType, e.To, e.Term, e.Duration, e.Success, e.Error)
 		}
-		return fmt.Sprintf("type=%s to=%d term=%d duration=%v success=%t", 
+		return fmt.Sprintf("type=%s to=%d term=%d duration=%v success=%t",
 			e.MessageType, e.To, e.Term, e.Duration, e.Success)
 	case *ElectionWonEvent:
 		return fmt.Sprintf("term=%d votes=%d duration=%v", e.Term, e.VoteCount, e.Duration)
@@ -224,7 +224,7 @@ func NewSlogLogger(level Level) *SlogLogger {
 	}
 	handler := slog.NewJSONHandler(os.Stderr, opts)
 	logger := slog.New(handler)
-	
+
 	return &SlogLogger{
 		logger: logger,
 		level:  level,
@@ -263,7 +263,7 @@ func (l *SlogLogger) WithFields(fields map[string]interface{}) Logger {
 	for k, v := range fields {
 		newFields[k] = v
 	}
-	
+
 	return &SlogLogger{
 		logger: l.logger,
 		level:  l.level,
@@ -279,7 +279,7 @@ func (l *SlogLogger) shouldLog(event Event) bool {
 	if l.level == LevelOff {
 		return false
 	}
-	
+
 	eventLevel := l.getEventLevel(event)
 	return eventLevel >= l.level
 }
@@ -291,8 +291,8 @@ func (l *SlogLogger) getEventLevel(event Event) Level {
 	case EventWarning:
 		return LevelWarn
 	case EventNodeStarting, EventNodeStarted, EventNodeStopping, EventNodeStopped,
-		 EventStateChanged, EventTermChanged, EventLeaderChanged,
-		 EventElectionStarted, EventElectionWon, EventElectionLost:
+		EventStateChanged, EventTermChanged, EventLeaderChanged,
+		EventElectionStarted, EventElectionWon, EventElectionLost:
 		return LevelInfo
 	default:
 		return LevelDebug
@@ -301,23 +301,23 @@ func (l *SlogLogger) getEventLevel(event Event) Level {
 
 func (l *SlogLogger) writeEvent(event Event) {
 	slogLevel := l.toSlogLevel(l.getEventLevel(event))
-	
+
 	// 构建属性
 	attrs := []slog.Attr{
 		slog.String("event_type", string(event.GetEventType())),
 		slog.Uint64("node_id", event.GetNodeID()),
 		slog.Time("timestamp", event.GetTimestamp()),
 	}
-	
+
 	// 添加事件特定属性
 	eventAttrs := l.getEventAttrs(event)
 	attrs = append(attrs, eventAttrs...)
-	
+
 	// 添加额外字段
 	for k, v := range l.fields {
 		attrs = append(attrs, slog.Any(k, v))
 	}
-	
+
 	l.logger.LogAttrs(nil, slogLevel, "raft_event", attrs...)
 }
 

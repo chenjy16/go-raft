@@ -41,8 +41,8 @@ const (
 type ReadOnlyOption int
 
 const (
-	ReadOnlySafe ReadOnlyOption = iota // 安全读（ReadIndex）
-	ReadOnlyLeaseBased                 // 基于租约的读（LeaseRead）
+	ReadOnlySafe       ReadOnlyOption = iota // 安全读（ReadIndex）
+	ReadOnlyLeaseBased                       // 基于租约的读（LeaseRead）
 )
 
 // LogEntry 表示日志条目
@@ -68,11 +68,11 @@ type Message struct {
 	Data        []byte      `json:"data,omitempty"`
 	Snapshot    *Snapshot   `json:"snapshot,omitempty"`
 	// ReadIndex 相关字段
-	ReadIndex   uint64 `json:"read_index,omitempty"`
-	Context     []byte `json:"context,omitempty"`
+	ReadIndex uint64 `json:"read_index,omitempty"`
+	Context   []byte `json:"context,omitempty"`
 	// 网络分区处理相关
-	PreVote     bool   `json:"pre_vote,omitempty"`
-	Force       bool   `json:"force,omitempty"`
+	PreVote bool `json:"pre_vote,omitempty"`
+	Force   bool `json:"force,omitempty"`
 }
 
 // MessageType 消息类型
@@ -88,12 +88,12 @@ const (
 	MsgPropose
 	MsgSnapshot
 	MsgSnapshotResp
-	MsgReadIndex        // 新增：ReadIndex 请求
-	MsgReadIndexResp    // 新增：ReadIndex 响应
-	MsgPreVote          // 新增：PreVote 请求（网络分区处理）
-	MsgPreVoteResp      // 新增：PreVote 响应
-	MsgTimeoutNow       // 新增：立即超时消息（Leader转移）
-	MsgCheckQuorum      // 新增：检查法定人数
+	MsgReadIndex     // 新增：ReadIndex 请求
+	MsgReadIndexResp // 新增：ReadIndex 响应
+	MsgPreVote       // 新增：PreVote 请求（网络分区处理）
+	MsgPreVoteResp   // 新增：PreVote 响应
+	MsgTimeoutNow    // 新增：立即超时消息（Leader转移）
+	MsgCheckQuorum   // 新增：检查法定人数
 )
 
 func (mt MessageType) String() string {
@@ -147,13 +147,13 @@ type Config struct {
 	MaxLogEntries     int           `json:"max_log_entries"`
 	SnapshotThreshold int           `json:"snapshot_threshold"`
 	// ReadIndex/LeaseRead 配置
-	ReadOnlyOption    ReadOnlyOption `json:"read_only_option"`
-	LeaseTimeout      time.Duration  `json:"lease_timeout"`
+	ReadOnlyOption ReadOnlyOption `json:"read_only_option"`
+	LeaseTimeout   time.Duration  `json:"lease_timeout"`
 	// PreVote 配置（网络分区处理）
-	PreVote           bool           `json:"pre_vote"`
-	CheckQuorum       bool           `json:"check_quorum"`
+	PreVote     bool `json:"pre_vote"`
+	CheckQuorum bool `json:"check_quorum"`
 	// Learner 配置
-	IsLearner         bool           `json:"is_learner"`
+	IsLearner bool `json:"is_learner"`
 }
 
 // DefaultConfig 返回默认配置
@@ -222,8 +222,8 @@ type ReadState struct {
 
 // ReadIndexStatus 表示ReadIndex请求的状态
 type ReadIndexStatus struct {
-	Req   Message     `json:"req"`
-	Index uint64      `json:"index"`
+	Req   Message         `json:"req"`
+	Index uint64          `json:"index"`
 	Acks  map[uint64]bool `json:"acks"`
 }
 

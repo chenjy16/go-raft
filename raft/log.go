@@ -3,7 +3,7 @@ package raft
 import (
 	"fmt"
 	"time"
-	
+
 	"github.com/chenjianyu/go-raft/raft/logging"
 )
 
@@ -23,7 +23,7 @@ type RaftLog struct {
 
 	// 日志的起始索引（用于快照后的日志压缩）
 	offset uint64
-	
+
 	// 事件发射器
 	eventEmitter logging.EventEmitter
 }
@@ -164,7 +164,7 @@ func (l *RaftLog) Entries(lo, hi uint64) ([]LogEntry, error) {
 		unstableStart := max(lo, unstableFirstIndex)
 		unstableStartOffset := unstableStart - unstableFirstIndex
 		unstableEndOffset := min(hi, l.unstable[len(l.unstable)-1].Index+1) - unstableFirstIndex
-		
+
 		if unstableStartOffset < uint64(len(l.unstable)) {
 			unstableEntries := l.unstable[unstableStartOffset:min(unstableEndOffset, uint64(len(l.unstable)))]
 			entries = append(entries, unstableEntries...)

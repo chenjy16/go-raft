@@ -19,46 +19,46 @@ type EventType string
 
 const (
 	// 节点生命周期事件
-	EventNodeStarting    EventType = "node_starting"
-	EventNodeStarted     EventType = "node_started"
-	EventNodeStopping    EventType = "node_stopping"
-	EventNodeStopped     EventType = "node_stopped"
-	
+	EventNodeStarting EventType = "node_starting"
+	EventNodeStarted  EventType = "node_started"
+	EventNodeStopping EventType = "node_stopping"
+	EventNodeStopped  EventType = "node_stopped"
+
 	// 状态变更事件
-	EventStateChanged    EventType = "state_changed"
-	EventTermChanged     EventType = "term_changed"
-	EventLeaderChanged   EventType = "leader_changed"
-	
+	EventStateChanged  EventType = "state_changed"
+	EventTermChanged   EventType = "term_changed"
+	EventLeaderChanged EventType = "leader_changed"
+
 	// 日志操作事件
-	EventLogAppending    EventType = "log_appending"
-	EventLogAppended     EventType = "log_appended"
-	EventLogCommitting   EventType = "log_committing"
-	EventLogCommitted    EventType = "log_committed"
-	EventLogApplying     EventType = "log_applying"
-	EventLogApplied      EventType = "log_applied"
-	
+	EventLogAppending  EventType = "log_appending"
+	EventLogAppended   EventType = "log_appended"
+	EventLogCommitting EventType = "log_committing"
+	EventLogCommitted  EventType = "log_committed"
+	EventLogApplying   EventType = "log_applying"
+	EventLogApplied    EventType = "log_applied"
+
 	// 消息传输事件
 	EventMessageSending  EventType = "message_sending"
 	EventMessageSent     EventType = "message_sent"
 	EventMessageReceived EventType = "message_received"
 	EventMessageFailed   EventType = "message_failed"
-	
+
 	// 选举事件
 	EventElectionStarted EventType = "election_started"
 	EventElectionWon     EventType = "election_won"
 	EventElectionLost    EventType = "election_lost"
 	EventVoteGranted     EventType = "vote_granted"
 	EventVoteDenied      EventType = "vote_denied"
-	
+
 	// 快照事件
 	EventSnapshotCreating EventType = "snapshot_creating"
 	EventSnapshotCreated  EventType = "snapshot_created"
 	EventSnapshotApplying EventType = "snapshot_applying"
 	EventSnapshotApplied  EventType = "snapshot_applied"
-	
+
 	// 错误事件
-	EventError           EventType = "error"
-	EventWarning         EventType = "warning"
+	EventError   EventType = "error"
+	EventWarning EventType = "warning"
 )
 
 // BaseEvent 基础事件结构
@@ -226,15 +226,15 @@ type SnapshotCreatedEvent struct {
 // ErrorEvent 错误事件
 type ErrorEvent struct {
 	BaseEvent
-	Error   error  `json:"error"`
-	Context string `json:"context"`
+	Error   error                  `json:"error"`
+	Context string                 `json:"context"`
 	Details map[string]interface{} `json:"details,omitempty"`
 }
 
 // WarningEvent 警告事件
 type WarningEvent struct {
 	BaseEvent
-	Message string `json:"message"`
-	Context string `json:"context"`
+	Message string                 `json:"message"`
+	Context string                 `json:"context"`
 	Details map[string]interface{} `json:"details,omitempty"`
 }

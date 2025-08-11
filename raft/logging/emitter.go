@@ -38,7 +38,7 @@ func (e *DefaultEventEmitter) EmitEvent(event Event) {
 	e.mu.RLock()
 	logger := e.logger
 	e.mu.RUnlock()
-	
+
 	if logger != nil {
 		logger.LogEvent(event)
 	}
@@ -67,7 +67,7 @@ func (e *DefaultEventEmitter) Close() error {
 	e.mu.RLock()
 	logger := e.logger
 	e.mu.RUnlock()
-	
+
 	if logger != nil {
 		return logger.Close()
 	}

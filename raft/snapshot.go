@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	
+
 	"github.com/chenjianyu/go-raft/raft/logging"
 )
 
@@ -20,21 +20,21 @@ type SnapshotManager struct {
 	node         *Node
 	storage      Storage
 	stateMachine StateMachine
-	
+
 	// 配置
 	snapshotThreshold uint64 // 触发快照的日志条目数量
 	compactThreshold  uint64 // 触发压缩的日志条目数量
-	
+
 	// 状态
 	lastSnapshotIndex uint64
 	lastCompactIndex  uint64
-	
+
 	// 控制
 	stopCh chan struct{}
 	doneCh chan struct{}
 	// running 标志确保 Start/Stop 幂等
 	running bool
-	
+
 	// 事件发射器
 	eventEmitter logging.EventEmitter
 }
@@ -125,10 +125,10 @@ func (sm *SnapshotManager) Stop() {
 // run 运行快照管理器
 func (sm *SnapshotManager) run() {
 	defer close(sm.doneCh)
-	
+
 	ticker := time.NewTicker(30 * time.Second) // 每 30 秒检查一次
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -144,12 +144,12 @@ func (sm *SnapshotManager) run() {
 func (sm *SnapshotManager) checkAndCreateSnapshot() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	lastIndex, err := sm.storage.LastIndex()
 	if err != nil {
 		return
 	}
-	
+
 	// 检查是否需要创建快照
 	if lastIndex-sm.lastSnapshotIndex >= sm.snapshotThreshold {
 		if err := sm.createSnapshot(lastIndex); err != nil {
@@ -170,17 +170,17 @@ func (sm *SnapshotManager) checkAndCreateSnapshot() {
 func (sm *SnapshotManager) checkAndCompactLog() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	lastIndex, err := sm.storage.LastIndex()
 	if err != nil {
 		return
 	}
-	
+
 	firstIndex, err := sm.storage.FirstIndex()
 	if err != nil {
 		return
 	}
-	
+
 	// 检查是否需要压缩日志
 	if lastIndex-firstIndex >= sm.compactThreshold {
 		compactIndex := sm.lastSnapshotIndex
@@ -207,14 +207,14 @@ func (sm *SnapshotManager) createSnapshot(index uint64) error {
 	if err != nil {
 		return fmt.Errorf("failed to get state machine snapshot: %v", err)
 	}
-	
+
 	// 创建快照
 	if fs, ok := sm.storage.(*FileStorage); ok {
 		snapshot, err := fs.CreateSnapshot(index, data)
 		if err != nil {
 			return fmt.Errorf("failed to create snapshot: %v", err)
 		}
-		
+
 		sm.lastSnapshotIndex = snapshot.Index
 		// 发射快照创建成功事件
 		if sm.eventEmitter != nil {
@@ -233,7 +233,7 @@ func (sm *SnapshotManager) createSnapshot(index uint64) error {
 		if err != nil {
 			return fmt.Errorf("failed to create snapshot: %v", err)
 		}
-		
+
 		sm.lastSnapshotIndex = snapshot.Index
 		// 发射快照创建成功事件
 		if sm.eventEmitter != nil {
@@ -248,7 +248,7 @@ func (sm *SnapshotManager) createSnapshot(index uint64) error {
 			sm.eventEmitter.EmitEvent(event)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -263,9 +263,9 @@ func (sm *SnapshotManager) compactLog(compactIndex uint64) error {
 			return fmt.Errorf("failed to compact log: %v", err)
 		}
 	}
-	
+
 	sm.lastCompactIndex = compactIndex
-	
+
 	// 发射日志压缩成功事件
 	if sm.eventEmitter != nil {
 		event := &logging.BaseEvent{
@@ -275,7 +275,7 @@ func (sm *SnapshotManager) compactLog(compactIndex uint64) error {
 		}
 		sm.eventEmitter.EmitEvent(event)
 	}
-	
+
 	return nil
 }
 
@@ -283,12 +283,12 @@ func (sm *SnapshotManager) compactLog(compactIndex uint64) error {
 func (sm *SnapshotManager) CreateSnapshotNow() error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	lastIndex, err := sm.storage.LastIndex()
 	if err != nil {
 		return err
 	}
-	
+
 	return sm.createSnapshot(lastIndex)
 }
 
@@ -296,7 +296,7 @@ func (sm *SnapshotManager) CreateSnapshotNow() error {
 func (sm *SnapshotManager) CompactLogNow(compactIndex uint64) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	return sm.compactLog(compactIndex)
 }
 
@@ -348,7 +348,7 @@ func (ss *SnapshotSender) SendSnapshot(ctx context.Context, nodeID uint64, snaps
 
 // SnapshotReceiver 接收快照
 type SnapshotReceiver struct {
-	node           *Node
+	node            *Node
 	snapshotManager *SnapshotManager
 }
 

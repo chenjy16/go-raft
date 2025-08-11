@@ -30,7 +30,7 @@ type ClusterNode struct {
 	MembershipManager *raft.MembershipManager
 	HTTPServer        *http.Server
 	running           bool
-	
+
 	// 维护状态信息
 	currentState raft.NodeState
 	currentTerm  uint64
@@ -43,10 +43,10 @@ func NewClusterNode(id uint64, port int, peers map[uint64]string) *ClusterNode {
 
 	config := &raft.Config{
 		ID:                id,
-		ElectionTimeout:   time.Second,      // 1秒选举超时
+		ElectionTimeout:   time.Second,            // 1秒选举超时
 		HeartbeatInterval: 200 * time.Millisecond, // 200ms心跳间隔
-		ElectionTick:      10, // 减少选举超时时间，加快选举 (1秒)
-		HeartbeatTick:     2,  // 减少心跳间隔，保持更好的连接 (200ms)
+		ElectionTick:      10,                     // 减少选举超时时间，加快选举 (1秒)
+		HeartbeatTick:     2,                      // 减少心跳间隔，保持更好的连接 (200ms)
 		Storage:           storage,
 		Applied:           0,
 		MaxSizePerMsg:     1024 * 1024,
@@ -56,7 +56,7 @@ func NewClusterNode(id uint64, port int, peers map[uint64]string) *ClusterNode {
 	}
 
 	node := raft.NewNode(config, sm)
-	
+
 	// 设置 Raft 节点的 peers（只包含其他节点，不包含自己）
 	if peers != nil && len(peers) > 0 {
 		peerIDs := make([]uint64, 0, len(peers))
@@ -70,16 +70,16 @@ func NewClusterNode(id uint64, port int, peers map[uint64]string) *ClusterNode {
 		node.SetPeers(peerIDs)
 		log.Printf("Node %d: Set peers to %v", id, peerIDs)
 	}
-	
+
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	
+
 	// HTTPTransport 的 peers 也需要包含所有节点（包括自己用于状态查询）
 	allPeers := make(map[uint64]string)
 	for peerID, peerAddr := range peers {
 		allPeers[peerID] = peerAddr
 	}
 	allPeers[id] = addr // 添加自己
-	
+
 	httpTransport := transport.NewHTTPTransport(id, addr, allPeers)
 	tm := transport.NewTransportManager(httpTransport, node)
 	mm := raft.NewMembershipManager(node)
@@ -87,7 +87,7 @@ func NewClusterNode(id uint64, port int, peers map[uint64]string) *ClusterNode {
 	for pid, paddr := range allPeers {
 		mm.AddMemberDirect(pid, paddr)
 	}
-	
+
 	cn := &ClusterNode{
 		ID:                id,
 		Port:              port,
@@ -196,7 +196,7 @@ func (cn *ClusterNode) handleClusterStatus(w http.ResponseWriter, r *http.Reques
 	// 从 storage 获取状态信息
 	hardState, _ := cn.Storage.InitialState()
 	lastIndex, _ := cn.Storage.LastIndex()
-	
+
 	status := map[string]interface{}{
 		"node_id":      cn.ID,
 		"state":        cn.currentState.String(),
@@ -235,7 +235,7 @@ func (cn *ClusterNode) handleLogs(w http.ResponseWriter, r *http.Request) {
 	firstIndex, _ := cn.Storage.FirstIndex()
 	lastIndex, _ := cn.Storage.LastIndex()
 	hardState, _ := cn.Storage.InitialState()
-	
+
 	info := map[string]interface{}{
 		"first_index":  firstIndex,
 		"last_index":   lastIndex,
@@ -283,7 +283,7 @@ func (cn *ClusterNode) updateNodeState(ready raft.Ready) {
 	if ready.SoftState != nil {
 		cn.currentState = ready.SoftState.State
 	}
-	
+
 	// 更新任期
 	if !raft.IsEmptyHardState(ready.HardState) {
 		cn.currentTerm = ready.HardState.Term
@@ -365,9 +365,9 @@ func (cn *ClusterNode) handleReady() {
 	for cn.running {
 		select {
 		case ready := <-cn.Node.Ready():
-			log.Printf("Node %d: Received Ready event - Messages: %d, Entries: %d, CommittedEntries: %d", 
+			log.Printf("Node %d: Received Ready event - Messages: %d, Entries: %d, CommittedEntries: %d",
 				cn.ID, len(ready.Messages), len(ready.Entries), len(ready.CommittedEntries))
-			
+
 			// 更新本地状态（包括 leader，可从 SoftState 读取），仅在变化时记录
 			if ready.SoftState != nil {
 				if cn.currentState != ready.SoftState.State {
@@ -382,7 +382,7 @@ func (cn *ClusterNode) handleReady() {
 					log.Printf("Node %d: Term changed to %d", cn.ID, ready.HardState.Term)
 					cn.currentTerm = ready.HardState.Term
 				}
-				log.Printf("Node %d: Persisting hard state - Term: %d, Commit: %d", 
+				log.Printf("Node %d: Persisting hard state - Term: %d, Commit: %d",
 					cn.ID, ready.HardState.Term, ready.HardState.Commit)
 				cn.Storage.SetHardState(ready.HardState)
 			}
@@ -409,7 +409,7 @@ func (cn *ClusterNode) handleReady() {
 				log.Printf("Node %d: Applying %d committed entries", cn.ID, len(ready.CommittedEntries))
 			}
 			for _, entry := range ready.CommittedEntries {
-				log.Printf("Node %d: Processing entry %d, Type: %d, Data length: %d", 
+				log.Printf("Node %d: Processing entry %d, Type: %d, Data length: %d",
 					cn.ID, entry.Index, entry.Type, len(entry.Data))
 				if entry.Type == raft.EntryNormal && len(entry.Data) > 0 {
 					result, err := cn.StateMachine.Apply(entry.Data)
@@ -455,13 +455,13 @@ func (c *Cluster) AddNode(id uint64, port int) {
 	// 创建新节点，传入完整的 peers 信息
 	node := NewClusterNode(id, port, allPeers)
 	c.nodes = append(c.nodes, node)
-	
+
 	// 更新所有现有节点的 peers 信息
 	for _, existingNode := range c.nodes[:len(c.nodes)-1] {
 		existingNode.Transport.UpdatePeers(allPeers)
 		// 将新节点添加到现有节点的成员管理器中
 		existingNode.MembershipManager.AddMemberDirect(id, fmt.Sprintf("127.0.0.1:%d", port))
-		
+
 		// 更新现有节点的Raft peers配置
 		peerIDs := make([]uint64, 0, len(allPeers))
 		for peerID := range allPeers {
@@ -479,7 +479,7 @@ func (c *Cluster) initializeClusterMembers() {
 
 	// 等待一段时间让所有节点稳定
 	time.Sleep(2 * time.Second)
-	
+
 	// 不再强制触发本地选举，交由超时和心跳自然形成Leader
 	log.Printf("Cluster initialization complete; waiting for natural leader election")
 }
@@ -487,7 +487,7 @@ func (c *Cluster) initializeClusterMembers() {
 // Start 启动集群
 func (c *Cluster) Start() error {
 	// 首先初始化集群成员信息
-		c.mu.RLock()
+	c.mu.RLock()
 	nodes := make([]*ClusterNode, len(c.nodes))
 	copy(nodes, c.nodes)
 	c.mu.RUnlock()
@@ -603,37 +603,37 @@ func main() {
 
 // runTests 运行功能测试
 func runTests(cluster *Cluster) {
-    time.Sleep(5 * time.Second) // 等待集群稳定
+	time.Sleep(5 * time.Second) // 等待集群稳定
 
-    fmt.Println("=== 开始功能测试 ===")
+	fmt.Println("=== 开始功能测试 ===")
 
-    // 测试1: 集群状态
-    fmt.Println("\n1. 集群状态测试")
-    testClusterStatus(cluster)
+	// 测试1: 集群状态
+	fmt.Println("\n1. 集群状态测试")
+	testClusterStatus(cluster)
 
-    // 测试2: 键值存储
-    fmt.Println("\n2. 键值存储测试")
-    testKeyValueOperations(cluster)
+	// 测试2: 键值存储
+	fmt.Println("\n2. 键值存储测试")
+	testKeyValueOperations(cluster)
 
-    // 测试3: 一致性测试
-    fmt.Println("\n3. 数据一致性测试")
-    testDataConsistency(cluster)
+	// 测试3: 一致性测试
+	fmt.Println("\n3. 数据一致性测试")
+	testDataConsistency(cluster)
 
-    // 测试4: 快照功能综合测试 (跳过)
-    fmt.Println("\n4. 快照功能综合测试 (跳过)")
+	// 测试4: 快照功能综合测试 (跳过)
+	fmt.Println("\n4. 快照功能综合测试 (跳过)")
 
-    // 测试5: Leader选举
-    fmt.Println("\n5. Leader选举测试")
-    testLeaderElection(cluster)
+	// 测试5: Leader选举
+	fmt.Println("\n5. Leader选举测试")
+	testLeaderElection(cluster)
 
-    // 测试6: 原始快照功能
-    fmt.Println("\n6. 原始快照功能测试")
-    testSnapshot(cluster)
+	// 测试6: 原始快照功能
+	fmt.Println("\n6. 原始快照功能测试")
+	testSnapshot(cluster)
 
-    // 新增: 多节点快照综合测试 (跳过)
-    fmt.Println("\n7. 多节点快照综合测试 (跳过)")
+	// 新增: 多节点快照综合测试 (跳过)
+	fmt.Println("\n7. 多节点快照综合测试 (跳过)")
 
-    fmt.Println("\n=== 功能测试完成 ===")
+	fmt.Println("\n=== 功能测试完成 ===")
 }
 
 // testClusterStatus 测试集群状态
@@ -678,7 +678,7 @@ func testKeyValueOperations(cluster *Cluster) {
 	for _, tc := range testCases {
 		// PUT操作
 		data := fmt.Sprintf(`{"value": "%s"}`, tc.value)
-		req, _ := http.NewRequest("PUT", fmt.Sprintf("%s/kv/%s", baseURL, tc.key), 
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("%s/kv/%s", baseURL, tc.key),
 			strings.NewReader(data))
 		req.Header.Set("Content-Type", "application/json")
 
@@ -732,7 +732,7 @@ func testDataConsistency(cluster *Cluster) {
 	// 在Leader上设置一个键值
 	baseURL := fmt.Sprintf("http://localhost:%d", leader.Port+1000)
 	data := `{"value": "consistency-test"}`
-	req, _ := http.NewRequest("PUT", fmt.Sprintf("%s/kv/test-key", baseURL), 
+	req, _ := http.NewRequest("PUT", fmt.Sprintf("%s/kv/test-key", baseURL),
 		strings.NewReader(data))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -841,7 +841,7 @@ func testSnapshot(cluster *Cluster) {
 	resp.Body.Close()
 
 	if resp.StatusCode == 200 {
-		fmt.Printf("  快照创建成功: 索引=%v, 任期=%v ✓\n", 
+		fmt.Printf("  快照创建成功: 索引=%v, 任期=%v ✓\n",
 			result["index"], result["term"])
 	} else {
 		fmt.Printf("  快照创建失败: HTTP %d ✗\n", resp.StatusCode)

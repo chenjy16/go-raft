@@ -16,7 +16,7 @@ type FileStorage struct {
 	hardState HardState
 	snapshot  *Snapshot
 	entries   []LogEntry
-	
+
 	// 文件路径
 	hardStatePath string
 	snapshotPath  string
@@ -114,7 +114,7 @@ func (fs *FileStorage) InitialState() (HardState, error) {
 func (fs *FileStorage) SetHardState(st HardState) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
-	
+
 	fs.hardState = st
 	return fs.saveHardState()
 }
@@ -180,7 +180,7 @@ func (fs *FileStorage) FirstIndex() (uint64, error) {
 func (fs *FileStorage) Snapshot() (*Snapshot, error) {
 	fs.mu.RLock()
 	defer fs.mu.RUnlock()
-	
+
 	if fs.snapshot == nil {
 		return &Snapshot{}, nil
 	}
@@ -229,7 +229,7 @@ func (fs *FileStorage) ApplySnapshot(snapshot *Snapshot) error {
 
 	fs.snapshot = snapshot
 	fs.entries = []LogEntry{{Index: snapshot.Index, Term: snapshot.Term}}
-	
+
 	if err := fs.saveSnapshot(); err != nil {
 		return err
 	}
@@ -284,7 +284,7 @@ func (fs *FileStorage) Compact(compactIndex uint64) error {
 	entries[0].Term = fs.entries[i].Term
 	entries = append(entries, fs.entries[i+1:]...)
 	fs.entries = entries
-	
+
 	return fs.saveEntries()
 }
 
@@ -301,7 +301,7 @@ func (fs *FileStorage) lastIndex() uint64 {
 func (fs *FileStorage) Close() error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
-	
+
 	// 确保所有数据都已保存
 	if err := fs.saveHardState(); err != nil {
 		return err

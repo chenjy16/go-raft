@@ -204,7 +204,7 @@ func (n *Node) canGrantPreVote(msg Message) bool {
 		electionTimeout := n.config.ElectionTimeout
 		if electionTimeout == 0 {
 			// 如果没有配置 ElectionTimeout，使用 tick 计算
-			electionTimeout = time.Duration(n.config.ElectionTick * 100) * time.Millisecond
+			electionTimeout = time.Duration(n.config.ElectionTick*100) * time.Millisecond
 		}
 		if n.preVoteManager.HasRecentHeartbeat(n.leader, electionTimeout) {
 			// 最近收到leader心跳，拒绝PreVote

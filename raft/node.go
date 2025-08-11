@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"sync"
 	"time"
-	
+
 	"github.com/chenjianyu/go-raft/raft/logging"
 )
 
@@ -24,7 +24,7 @@ type Node struct {
 	// 持久化状态
 	currentTerm uint64
 	votedFor    uint64
-	leader      uint64  // 添加 leader 字段来追踪当前 Leader
+	leader      uint64 // 添加 leader 字段来追踪当前 Leader
 
 	// 日志相关
 	commitIndex uint64
@@ -44,7 +44,7 @@ type Node struct {
 	electionElapsed           int
 	heartbeatElapsed          int
 	randomizedElectionTimeout int
-	votes                     map[uint64]bool  // 添加投票计数字段
+	votes                     map[uint64]bool // 添加投票计数字段
 
 	// 消息处理
 	msgs []Message
@@ -114,27 +114,27 @@ func NewNode(config *Config, stateMachine StateMachine) *Node {
 	raftLog := NewRaftLog(config.Storage)
 
 	n := &Node{
-		config:           config,
-		id:               config.ID,
-		state:            StateFollower,
-		raftLog:          raftLog,
-		stateMachine:     stateMachine,
-		peers:            make(map[uint64]bool),
-		nextIndex:        make(map[uint64]uint64),
-		matchIndex:       make(map[uint64]uint64),
-		votes:            make(map[uint64]bool),  // 初始化投票计数
+		config:            config,
+		id:                config.ID,
+		state:             StateFollower,
+		raftLog:           raftLog,
+		stateMachine:      stateMachine,
+		peers:             make(map[uint64]bool),
+		nextIndex:         make(map[uint64]uint64),
+		matchIndex:        make(map[uint64]uint64),
+		votes:             make(map[uint64]bool), // 初始化投票计数
 		readIndexManager:  NewReadIndexManager(config.ReadOnlyOption, config.LeaseTimeout),
 		learnerManager:    NewLearnerManager(),
 		preVoteManager:    NewPreVoteManager(config.PreVote, config.CheckQuorum),
 		partitionDetector: NewNetworkPartitionDetector(true, config.ElectionTimeout*3),
 		readyc:            make(chan Ready, 1),
-		advancec:         make(chan struct{}),
-		tickc:            make(chan struct{}),
-		recvc:            make(chan Message, 256),
-		confc:            make(chan ConfChange),
-		confstatec:       make(chan ConfState),
-		stopc:            make(chan struct{}),
-		done:             make(chan struct{}),
+		advancec:          make(chan struct{}),
+		tickc:             make(chan struct{}),
+		recvc:             make(chan Message, 256),
+		confc:             make(chan ConfChange),
+		confstatec:        make(chan ConfState),
+		stopc:             make(chan struct{}),
+		done:              make(chan struct{}),
 	}
 
 	// 初始化集群成员（只包含自己）
@@ -184,9 +184,9 @@ func (n *Node) Start() error {
 		}
 		n.eventEmitter.EmitEvent(event)
 	}
-	
+
 	go n.run()
-	
+
 	// 发射节点启动完成事件
 	if n.eventEmitter != nil {
 		event := &logging.NodeStartedEvent{
@@ -196,7 +196,7 @@ func (n *Node) Start() error {
 		}
 		n.eventEmitter.EmitEvent(event)
 	}
-	
+
 	return nil
 }
 
@@ -211,10 +211,10 @@ func (n *Node) Stop() {
 		}
 		n.eventEmitter.EmitEvent(event)
 	}
-	
+
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	
+
 	select {
 	case n.stopc <- struct{}{}:
 	case <-n.done:
@@ -232,7 +232,7 @@ func (n *Node) Stop() {
 		return // already stopping
 	}
 	<-n.done
-	
+
 	// 发射节点已停止事件
 	if n.eventEmitter != nil {
 		event := &logging.BaseEvent{
@@ -261,15 +261,15 @@ func (n *Node) Advance() {
 func (n *Node) SetPeers(peerIDs []uint64) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	
+
 	// 清空现有 peers
 	n.peers = make(map[uint64]bool)
-	
+
 	// 添加所有 peers（包括自己）
 	for _, id := range peerIDs {
 		n.peers[id] = true
 	}
-	
+
 	// 确保自己在 peers 中
 	n.peers[n.id] = true
 }
@@ -282,18 +282,18 @@ func (n *Node) Step(ctx context.Context, msg Message) error {
 		return fmt.Errorf("node stopped")
 	default:
 	}
-	
+
 	// 特别处理 MsgPropose：如果不是 Leader，立即拒绝
 	if msg.Type == MsgPropose {
 		n.mu.RLock()
 		isLeader := n.state == StateLeader
 		n.mu.RUnlock()
-		
+
 		if !isLeader {
 			return ErrNotLeader
 		}
 	}
-	
+
 	select {
 	case n.recvc <- msg:
 		return nil
@@ -312,7 +312,7 @@ func (n *Node) Propose(ctx context.Context, data []byte) error {
 		return fmt.Errorf("node stopped")
 	default:
 	}
-	
+
 	// 只有 Leader 才能处理提议
 	n.mu.RLock()
 	isLeader := n.state == StateLeader
@@ -320,7 +320,7 @@ func (n *Node) Propose(ctx context.Context, data []byte) error {
 	if !isLeader {
 		return ErrNotLeader
 	}
-	
+
 	// 同步处理本地提议，避免依赖 run 循环
 	msg := Message{Type: MsgPropose, Data: data}
 	n.step(msg)
@@ -436,7 +436,7 @@ func (n *Node) newReady() Ready {
 	ready.SoftState = &SoftState{Lead: n.leader, State: n.state}
 
 	hasNextEnts := n.raftLog.HasNextEnts()
-	
+
 	if hasNextEnts {
 		ready.CommittedEntries = n.raftLog.NextEnts()
 		// 发射日志提交事件
@@ -485,35 +485,35 @@ func (n *Node) advance(ready Ready) {
 
 // 时钟滴答处理
 func (n *Node) tick() {
-    n.mu.Lock()
-    switch n.state {
-    case StateFollower, StateCandidate:
-        n.electionElapsed++
-        // 使用随机化的选举超时时间以避免选举活锁
-        if n.electionElapsed >= n.randomizedElectionTimeout {
-            n.electionElapsed = 0
-            // 直接调用相应的选举函数，不需要通过消息
-            if n.config.PreVote {
-                n.campaignPreVote()
-            } else {
-                n.campaign()
-            }
-        }
-    case StateLeader:
-        n.heartbeatElapsed++
-        // 领导者也需要推进 electionElapsed 以便周期性进行 quorum 检查
-        n.electionElapsed++
-        if n.heartbeatElapsed >= n.config.HeartbeatTick {
-            n.heartbeatElapsed = 0
-            n.bcastHeartbeat()
-        }
-        // Leader 定期检查 quorum
-        if n.config.CheckQuorum && n.electionElapsed >= n.config.ElectionTick {
-            n.checkQuorum()
-            n.electionElapsed = 0
-        }
-    }
-    n.mu.Unlock()
+	n.mu.Lock()
+	switch n.state {
+	case StateFollower, StateCandidate:
+		n.electionElapsed++
+		// 使用随机化的选举超时时间以避免选举活锁
+		if n.electionElapsed >= n.randomizedElectionTimeout {
+			n.electionElapsed = 0
+			// 直接调用相应的选举函数，不需要通过消息
+			if n.config.PreVote {
+				n.campaignPreVote()
+			} else {
+				n.campaign()
+			}
+		}
+	case StateLeader:
+		n.heartbeatElapsed++
+		// 领导者也需要推进 electionElapsed 以便周期性进行 quorum 检查
+		n.electionElapsed++
+		if n.heartbeatElapsed >= n.config.HeartbeatTick {
+			n.heartbeatElapsed = 0
+			n.bcastHeartbeat()
+		}
+		// Leader 定期检查 quorum
+		if n.config.CheckQuorum && n.electionElapsed >= n.config.ElectionTick {
+			n.checkQuorum()
+			n.electionElapsed = 0
+		}
+	}
+	n.mu.Unlock()
 }
 
 // 消息处理
@@ -620,7 +620,7 @@ func (n *Node) becomeFollower(term, lead uint64) {
 	n.state = StateFollower
 	n.currentTerm = term
 	n.votedFor = 0
-	n.leader = lead  // 设置 leader 字段
+	n.leader = lead // 设置 leader 字段
 	n.electionElapsed = 0
 	n.resetRandomizedElectionTimeout()
 }
@@ -630,10 +630,10 @@ func (n *Node) becomeCandidate() {
 	n.state = StateCandidate
 	n.currentTerm++
 	n.votedFor = n.id
-	n.leader = 0  // 候选状态下没有 leader
+	n.leader = 0 // 候选状态下没有 leader
 	n.electionElapsed = 0
 	n.resetRandomizedElectionTimeout()
-	
+
 	// 重置投票计数，给自己投票
 	n.votes = make(map[uint64]bool)
 	n.votes[n.id] = true
@@ -642,9 +642,9 @@ func (n *Node) becomeCandidate() {
 // 转为 leader
 func (n *Node) becomeLeader() {
 	n.state = StateLeader
-	n.leader = n.id  // 自己成为 leader
+	n.leader = n.id // 自己成为 leader
 	n.heartbeatElapsed = 0
-	
+
 	// 确保 currentTerm 至少为 1
 	if n.currentTerm == 0 {
 		n.currentTerm = 1
@@ -782,10 +782,10 @@ func (n *Node) handleRequestVoteResp(msg Message) {
 	if msg.VoteGranted {
 		// 记录投票
 		n.votes[msg.From] = true
-		
+
 		// 计算获得的票数
 		voteCount := len(n.votes)
-		
+
 		// 检查是否获得大多数票
 		if voteCount >= n.quorum() {
 			n.becomeLeader()
@@ -832,79 +832,79 @@ func (n *Node) handleAppendEntries(msg Message) {
 
 // 处理日志追加响应
 func (n *Node) handleAppendEntriesResp(msg Message) {
-    if n.state != StateLeader {
-        return
-    }
+	if n.state != StateLeader {
+		return
+	}
 
-    // 收到响应即认为与该节点有联系，更新活跃状态
-    if n.preVoteManager != nil {
-        n.preVoteManager.UpdateHeartbeat(msg.From)
-    }
-    if n.partitionDetector != nil {
-        n.partitionDetector.UpdateContact(msg.From)
-    }
+	// 收到响应即认为与该节点有联系，更新活跃状态
+	if n.preVoteManager != nil {
+		n.preVoteManager.UpdateHeartbeat(msg.From)
+	}
+	if n.partitionDetector != nil {
+		n.partitionDetector.UpdateContact(msg.From)
+	}
 
-    if msg.Success {
-        // 更新跟随者的matchIndex和nextIndex
-        n.matchIndex[msg.From] = msg.LogIndex
-        n.nextIndex[msg.From] = msg.LogIndex + 1
-        n.maybeCommit()
-    } else {
-        // 回退 nextIndex 重试
-        if msg.LogIndex > 0 {
-            n.nextIndex[msg.From] = msg.LogIndex
-        } else if n.nextIndex[msg.From] > 1 {
-            n.nextIndex[msg.From]--
-        }
-        n.sendAppend(msg.From)
-    }
+	if msg.Success {
+		// 更新跟随者的matchIndex和nextIndex
+		n.matchIndex[msg.From] = msg.LogIndex
+		n.nextIndex[msg.From] = msg.LogIndex + 1
+		n.maybeCommit()
+	} else {
+		// 回退 nextIndex 重试
+		if msg.LogIndex > 0 {
+			n.nextIndex[msg.From] = msg.LogIndex
+		} else if n.nextIndex[msg.From] > 1 {
+			n.nextIndex[msg.From]--
+		}
+		n.sendAppend(msg.From)
+	}
 }
 
 // 处理心跳
 func (n *Node) handleHeartbeat(msg Message) {
-    n.electionElapsed = 0
-    n.resetRandomizedElectionTimeout()
+	n.electionElapsed = 0
+	n.resetRandomizedElectionTimeout()
 
-    // 更新 leader 信息
-    n.leader = msg.From
+	// 更新 leader 信息
+	n.leader = msg.From
 
-    // 更新预投票与分区检测的心跳/接触时间
-    if n.preVoteManager != nil {
-        n.preVoteManager.UpdateHeartbeat(msg.From)
-    }
-    if n.partitionDetector != nil {
-        n.partitionDetector.UpdateContact(msg.From)
-    }
+	// 更新预投票与分区检测的心跳/接触时间
+	if n.preVoteManager != nil {
+		n.preVoteManager.UpdateHeartbeat(msg.From)
+	}
+	if n.partitionDetector != nil {
+		n.partitionDetector.UpdateContact(msg.From)
+	}
 
-    n.send(Message{
-        Type: MsgHeartbeatResp,
-        From: n.id,
-        To:   msg.From,
-        Term: n.currentTerm,
-    })
+	n.send(Message{
+		Type: MsgHeartbeatResp,
+		From: n.id,
+		To:   msg.From,
+		Term: n.currentTerm,
+	})
 }
 
 // 处理心跳响应
 func (n *Node) handleHeartbeatResp(msg Message) {
-    // Leader更新对应节点的活跃信息
-    if n.state == StateLeader {
-        if n.preVoteManager != nil {
-            n.preVoteManager.UpdateHeartbeat(msg.From)
-        }
-        if n.partitionDetector != nil {
-            n.partitionDetector.UpdateContact(msg.From)
-        }
-    }
+	// Leader更新对应节点的活跃信息
+	if n.state == StateLeader {
+		if n.preVoteManager != nil {
+			n.preVoteManager.UpdateHeartbeat(msg.From)
+		}
+		if n.partitionDetector != nil {
+			n.partitionDetector.UpdateContact(msg.From)
+		}
+	}
 }
 
 // 尝试提交日志
 func (n *Node) maybeCommit() {
 	// 收集所有节点的 matchIndex，包括 Leader 自己
 	indices := make([]uint64, 0, len(n.peers))
-	
+
 	// 添加 Leader 自己的 matchIndex
 	indices = append(indices, n.raftLog.LastIndex())
-	
+
 	// 添加其他节点的 matchIndex
 	for id, index := range n.matchIndex {
 		if id != n.id {
@@ -921,7 +921,7 @@ func (n *Node) maybeCommit() {
 				count++
 			}
 		}
-		
+
 		// 如果达到法定人数且是当前任期的条目
 		if count >= n.quorum() {
 			term, err := n.raftLog.Term(index)

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	
+
 	"github.com/chenjianyu/go-raft/raft/logging"
 )
 
@@ -14,24 +14,24 @@ import (
 type MembershipManager struct {
 	mu   sync.RWMutex
 	node *Node
-	
+
 	// 成员信息
 	members map[uint64]*Member
-	
+
 	// 配置变更状态
 	pendingConfChange *ConfChange
 	confChangeTimeout time.Duration
-	
+
 	// 事件发射器
 	eventEmitter logging.EventEmitter
 }
 
 // Member 集群成员信息
 type Member struct {
-	ID       uint64    `json:"id"`
-	Address  string    `json:"address"`
+	ID       uint64       `json:"id"`
+	Address  string       `json:"address"`
 	Status   MemberStatus `json:"status"`
-	JoinTime time.Time `json:"join_time"`
+	JoinTime time.Time    `json:"join_time"`
 }
 
 // MemberStatus 成员状态
@@ -146,7 +146,7 @@ func (mm *MembershipManager) AddMember(ctx context.Context, id uint64, address s
 			}
 			return nil
 		}
-		
+
 		// 其他错误，清理状态
 		delete(mm.members, id)
 		return fmt.Errorf("failed to propose configuration change: %v", err)
@@ -154,7 +154,7 @@ func (mm *MembershipManager) AddMember(ctx context.Context, id uint64, address s
 
 	// 设置为待处理状态（只有在成功提议时）
 	mm.pendingConfChange = confChange
-	
+
 	// 发射成员添加事件
 	if mm.eventEmitter != nil {
 		event := &logging.BaseEvent{
@@ -164,7 +164,7 @@ func (mm *MembershipManager) AddMember(ctx context.Context, id uint64, address s
 		}
 		mm.eventEmitter.EmitEvent(event)
 	}
-	
+
 	return nil
 }
 
@@ -213,7 +213,7 @@ func (mm *MembershipManager) RemoveMember(ctx context.Context, id uint64) error 
 		}
 		mm.eventEmitter.EmitEvent(event)
 	}
-	
+
 	return nil
 }
 
@@ -221,12 +221,12 @@ func (mm *MembershipManager) RemoveMember(ctx context.Context, id uint64) error 
 func (mm *MembershipManager) ApplyConfChange(cc ConfChange) *ConfState {
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
-	
+
 	switch cc.Type {
 	case ConfChangeAddNode:
 		// 解析地址信息
 		address := mm.decodeAddMemberContext(cc.Context)
-		
+
 		// 更新成员状态
 		if member, exists := mm.members[cc.NodeID]; exists {
 			member.Status = MemberStatusActive
@@ -238,7 +238,7 @@ func (mm *MembershipManager) ApplyConfChange(cc ConfChange) *ConfState {
 				JoinTime: time.Now(),
 			}
 		}
-		
+
 		// 发射成员添加完成事件
 		if mm.eventEmitter != nil {
 			event := &logging.BaseEvent{
@@ -248,13 +248,13 @@ func (mm *MembershipManager) ApplyConfChange(cc ConfChange) *ConfState {
 			}
 			mm.eventEmitter.EmitEvent(event)
 		}
-		
+
 	case ConfChangeRemoveNode:
 		// 更新成员状态
 		if member, exists := mm.members[cc.NodeID]; exists {
 			member.Status = MemberStatusLeft
 		}
-		
+
 		// 发射成员移除完成事件
 		if mm.eventEmitter != nil {
 			event := &logging.BaseEvent{
@@ -265,13 +265,13 @@ func (mm *MembershipManager) ApplyConfChange(cc ConfChange) *ConfState {
 			mm.eventEmitter.EmitEvent(event)
 		}
 	}
-	
+
 	// 清除待处理的配置变更
 	mm.pendingConfChange = nil
-	
+
 	// 应用到 Raft 节点
 	confState := mm.node.ApplyConfChange(cc)
-	
+
 	return confState
 }
 
@@ -279,13 +279,13 @@ func (mm *MembershipManager) ApplyConfChange(cc ConfChange) *ConfState {
 func (mm *MembershipManager) GetMembers() map[uint64]*Member {
 	mm.mu.RLock()
 	defer mm.mu.RUnlock()
-	
+
 	members := make(map[uint64]*Member)
 	for id, member := range mm.members {
 		memberCopy := *member
 		members[id] = &memberCopy
 	}
-	
+
 	return members
 }
 
@@ -293,12 +293,12 @@ func (mm *MembershipManager) GetMembers() map[uint64]*Member {
 func (mm *MembershipManager) GetMember(id uint64) (*Member, bool) {
 	mm.mu.RLock()
 	defer mm.mu.RUnlock()
-	
+
 	member, exists := mm.members[id]
 	if !exists {
 		return nil, false
 	}
-	
+
 	memberCopy := *member
 	return &memberCopy, true
 }
@@ -307,7 +307,7 @@ func (mm *MembershipManager) GetMember(id uint64) (*Member, bool) {
 func (mm *MembershipManager) GetActiveMembers() map[uint64]*Member {
 	mm.mu.RLock()
 	defer mm.mu.RUnlock()
-	
+
 	activeMembers := make(map[uint64]*Member)
 	for id, member := range mm.members {
 		if member.Status == MemberStatusActive {
@@ -315,7 +315,7 @@ func (mm *MembershipManager) GetActiveMembers() map[uint64]*Member {
 			activeMembers[id] = &memberCopy
 		}
 	}
-	
+
 	return activeMembers
 }
 
@@ -334,14 +334,14 @@ func (mm *MembershipManager) GetLeader() uint64 {
 func (mm *MembershipManager) GetClusterSize() int {
 	mm.mu.RLock()
 	defer mm.mu.RUnlock()
-	
+
 	count := 0
 	for _, member := range mm.members {
 		if member.Status == MemberStatusActive {
 			count++
 		}
 	}
-	
+
 	return count
 }
 
@@ -354,7 +354,7 @@ func (mm *MembershipManager) GetQuorumSize() int {
 func (mm *MembershipManager) HasPendingConfChange() bool {
 	mm.mu.RLock()
 	defer mm.mu.RUnlock()
-	
+
 	return mm.pendingConfChange != nil
 }
 
@@ -362,7 +362,7 @@ func (mm *MembershipManager) HasPendingConfChange() bool {
 func (mm *MembershipManager) ClearPendingConfChange() {
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
-	
+
 	mm.pendingConfChange = nil
 }
 
@@ -394,13 +394,13 @@ type ClusterInfo struct {
 func (mm *MembershipManager) GetClusterInfo() *ClusterInfo {
 	mm.mu.RLock()
 	defer mm.mu.RUnlock()
-	
+
 	membersCopy := make(map[uint64]*Member)
 	for id, m := range mm.members {
 		mc := *m
 		membersCopy[id] = &mc
 	}
-	
+
 	return &ClusterInfo{
 		Members:     membersCopy,
 		Leader:      mm.GetLeader(),
@@ -418,8 +418,8 @@ type JoinRequest struct {
 
 // JoinResponse 加入集群响应
 type JoinResponse struct {
-	Success     bool   `json:"success"`
-	Error       string `json:"error,omitempty"`
+	Success     bool         `json:"success"`
+	Error       string       `json:"error,omitempty"`
 	ClusterInfo *ClusterInfo `json:"cluster_info,omitempty"`
 }
 
@@ -432,7 +432,7 @@ func (mm *MembershipManager) HandleJoinRequest(ctx context.Context, req *JoinReq
 			Error:   "not leader",
 		}
 	}
-	
+
 	// 添加成员
 	if err := mm.AddMember(ctx, req.NodeID, req.Address); err != nil {
 		return &JoinResponse{
@@ -440,7 +440,7 @@ func (mm *MembershipManager) HandleJoinRequest(ctx context.Context, req *JoinReq
 			Error:   err.Error(),
 		}
 	}
-	
+
 	return &JoinResponse{
 		Success:     true,
 		ClusterInfo: mm.GetClusterInfo(),
@@ -467,7 +467,7 @@ func (mm *MembershipManager) HandleLeaveRequest(ctx context.Context, req *LeaveR
 			Error:   "not leader",
 		}
 	}
-	
+
 	// 移除成员
 	if err := mm.RemoveMember(ctx, req.NodeID); err != nil {
 		return &LeaveResponse{
@@ -475,7 +475,7 @@ func (mm *MembershipManager) HandleLeaveRequest(ctx context.Context, req *LeaveR
 			Error:   err.Error(),
 		}
 	}
-	
+
 	return &LeaveResponse{
 		Success: true,
 	}

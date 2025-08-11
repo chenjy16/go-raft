@@ -32,7 +32,7 @@ func (c *Container) Register(name string, service interface{}) {
 func (c *Container) Get(name string) (interface{}, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	service, exists := c.services[name]
 	if !exists {
 		return nil, fmt.Errorf("service %s not found", name)
@@ -46,20 +46,20 @@ func (c *Container) GetTyped(name string, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	
+
 	targetValue := reflect.ValueOf(target)
 	if targetValue.Kind() != reflect.Ptr {
 		return fmt.Errorf("target must be a pointer")
 	}
-	
+
 	serviceValue := reflect.ValueOf(service)
 	targetType := targetValue.Elem().Type()
-	
+
 	if !serviceValue.Type().AssignableTo(targetType) {
-		return fmt.Errorf("service type %v is not assignable to target type %v", 
+		return fmt.Errorf("service type %v is not assignable to target type %v",
 			serviceValue.Type(), targetType)
 	}
-	
+
 	targetValue.Elem().Set(serviceValue)
 	return nil
 }
@@ -81,22 +81,22 @@ func (m *LoggingModule) Configure(container *Container) error {
 	// 注册日志器工厂
 	factory := logging.NewLoggerFactory()
 	container.Register("loggerFactory", factory)
-	
+
 	// 注册日志器
 	logger, err := factory.CreateLogger(m.config)
 	if err != nil {
 		return err
 	}
 	container.Register("logger", logger)
-	
+
 	// 注册事件发射器工厂
 	emitterFactory := &DefaultEventEmitterFactory{}
 	container.Register("eventEmitterFactory", emitterFactory)
-	
+
 	// 注册默认事件发射器
 	emitter := emitterFactory.CreateEventEmitter(logger, 0) // nodeID 将在运行时设置
 	container.Register("eventEmitter", emitter)
-	
+
 	return nil
 }
 
@@ -128,23 +128,23 @@ func NewRaftModule(nodeID uint64) *RaftModule {
 func (m *RaftModule) Configure(container *Container) error {
 	// 注册节点 ID
 	container.Register("nodeID", m.nodeID)
-	
+
 	// 获取日志器和工厂
 	logger, err := container.Get("logger")
 	if err != nil {
 		return err
 	}
-	
+
 	factory, err := container.Get("eventEmitterFactory")
 	if err != nil {
 		return err
 	}
-	
+
 	// 注册带节点 ID 的事件发射器
 	emitterFactory := factory.(EventEmitterFactory)
 	nodeEmitter := emitterFactory.CreateEventEmitter(logger.(logging.Logger), m.nodeID)
 	container.Register("nodeEventEmitter", nodeEmitter)
-	
+
 	return nil
 }
 
@@ -217,7 +217,7 @@ func (b *ApplicationBuilder) Build() (*Application, error) {
 			return nil, err
 		}
 	}
-	
+
 	return &Application{
 		container: b.container,
 	}, nil
@@ -262,13 +262,13 @@ func (a *Application) Close() error {
 			return err
 		}
 	}
-	
+
 	// 关闭事件发射器
 	if emitter, err := a.GetEventEmitter(); err == nil {
 		if err := emitter.Close(); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
